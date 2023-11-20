@@ -1,0 +1,17 @@
+drwxr-sr-x   2 ftp      ftp          4096 Apr 21  2021 .
+drwxr-sr-x  26 ftp      ftp          4096 Apr 20  2021 ..
+-rw-r--r--   1 ftp      ftp          3736 Mar  6  2017 aacgain_1.9-dmo3.debian.tar.xz
+-rw-r--r--   1 ftp      ftp          1717 Mar  6  2017 aacgain_1.9-dmo3.dsc
+-rw-r--r--   1 ftp      ftp        447708 Mar  6  2017 aacgain_1.9-dmo3_amd64.deb
+-rw-r--r--   1 ftp      ftp        394170 Mar  6  2017 aacgain_1.9-dmo3_arm64.deb
+-rw-r--r--   1 ftp      ftp        398696 Mar  6  2017 aacgain_1.9-dmo3_armel.deb
+-rw-r--r--   1 ftp      ftp        333794 Mar  6  2017 aacgain_1.9-dmo3_armhf.deb
+-rw-r--r--   1 ftp      ftp        462070 Mar  6  2017 aacgain_1.9-dmo3_i386.deb
+-rw-r--r--   1 ftp      ftp          3748 Dec  2  2017 aacgain_1.9-dmo4.debian.tar.xz
+-rw-r--r--   1 ftp      ftp          1760 Dec  2  2017 aacgain_1.9-dmo4.dsc
+-rw-r--r--   1 ftp      ftp        439324 Dec  2  2017 aacgain_1.9-dmo4_amd64.deb
+-rw-r--r--   1 ftp      ftp        407728 Dec  2  2017 aacgain_1.9-dmo4_arm64.deb
+-rw-r--r--   1 ftp      ftp        394560 Dec  2  2017 aacgain_1.9-dmo4_armel.deb
+-rw-r--r--   1 ftp      ftp        333304 Dec  2  2017 aacgain_1.9-dmo4_armhf.deb
+-rw-r--r--   1 ftp      ftp        457300 Dec  2  2017 aacgain_1.9-dmo4_i386.deb
+-rw-r--r--   1 ftp      ftp       2260070 Aug  3  2016 aacgain_1.9.orig.tar.gz

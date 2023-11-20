@@ -1,0 +1,589 @@
+package jp.jaxa.iss.kibo.rpc.sampleapk;
+
+import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
+
+import gov.nasa.arc.astrobee.Result;
+import gov.nasa.arc.astrobee.types.Point;
+import gov.nasa.arc.astrobee.types.Quaternion;
+import jp.jaxa.iss.kibo.rpc.sampleapk.QuaternionExt;
+import jp.jaxa.iss.kibo.rpc.sampleapk.ArucoTag;
+import jp.jaxa.iss.kibo.rpc.sampleapk.ArucoCorner;
+
+import org.opencv.core.Mat;
+import org.opencv.android.OpenCVLoader;
+//import android.util.Log;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.opencv.core.Rect;
+import org.opencv.imgcodecs.Imgcodecs;
+import android.os.Environment;
+import android.os.SystemClock;
+
+import java.io.File;
+
+import net.sourceforge.zbar.Config;
+import net.sourceforge.zbar.Image;
+import net.sourceforge.zbar.ImageScanner;
+import net.sourceforge.zbar.Symbol;
+import net.sourceforge.zbar.SymbolSet;
+
+import org.opencv.aruco.Aruco;
+import org.opencv.aruco.Dictionary;
+import org.opencv.core.CvType;
+
+import org.opencv.core.Rect;
+import org.opencv.imgproc.Imgproc;
+
+import  android.os.Handler;
+import java.util.ArrayList;
+import java.util.Collections;
+
+
+/**
+ * Class meant to handle commands from the Ground Data System and execute them in Astrobee
+ */
+
+
+public class YourService extends KiboRpcService {
+    /* Start :
+    Position (x, y, z) = (10.76150, -6.88490, 5.31647)
+    Orientation (x, y, z, w) = (0, 0, -0.707, 0.707)
+    */
+    private static final Log logger = LogFactory.getLog(YourService.class);
+
+    static final Point _start_point = new Point(78.76151, -6.88490, 5.31647);
+    static final QuaternionExt _start_quatanion = new QuaternionExt(0, 0, -0.707f, 0.707f);
+
+    @Override
+    protected void runPlan1() {
+
+        try {
+
+
+            final Dictionary ARUCO_DICT5X5 = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);
+
+            logger.info("DevLog_status" + "start RPY = " + _start_quatanion.toString());
+
+            // the mission starts
+            api.startMission();
+
+            // move to start point
+            api.moveTo(_start_point, _start_quatanion.get_core(), true);
+
+            // move to a point
+            Point point = new Point(10.71f, -7.70f, 4.48f);
+            QuaternionExt __q1 = new QuaternionExt(0, 0.707f, 0, 0.707f);
+            logger.info("DevLog_status " + "RPY [_q] before= " + __q1.toString());
+            QuaternionExt _quaternion = QuaternionExt.fromEulerAngles(__q1.toRoll(), __q1.toPitch() - Math.toRadians(5), __q1.toYaw());
+            logger.info("DevLog_status " + "RPY [_q] after = " + _quaternion.toString());
+            //QuaternionExt quaternion = QuaternionExt.fromEulerAngles(_quaternion.toRoll(),_quaternion.toPitch(),_quaternion.toYaw()+Math.toRadians(90));
+            //logger.info("DevLog_status " + "RPY [ q]= " + quaternion.toString());
+            api.moveTo(point, _quaternion.get_core(), true);
+            logger.info("DevLog_status " + "Move done.");
+
+            //        Point point2 = new Point(10.71f+0.074f, -7.70f, 4.48f);
+            //        QuaternionExt quaternion2 =  new QuaternionExt(0, 0.707f, 0, 0.707f);
+            //        logger.info("DevLog_status " + "RPY [2]= " + quaternion2.toString());
+            //        api.moveTo(point2, quaternion2.get_core(), true);
+            //        logger.info("DevLog_status " + "Move[2] done.");
+            logger.info("DevLog_status " + "Wait for read ar.");
+            //        final Handler handler = new Handler();
+            //        handler.postDelayed(new Runnable() {
+            //            @Override
+            //            public void run() {
+            //                calTargetPos();
+            //            }
+            //        }, 5000);
+            //wait(5000);
+            try {
+                Thread.sleep(5000);
+                calTargetPos(1);
+            } catch (Exception e) {
+
+            }
+
+
+            logger.info("DevLog_status " + "read ar.");
+
+
+            // report point1 arrival
+            api.reportPoint1Arrival();
+            logger.info("DevLog_status " + "moved to point a");
+
+
+            // get a camera image
+            Mat image = api.getMatNavCam();
+            //Rect ar_roi = new Rect(525, 368, 340, 250);
+            Rect ar_roi = new Rect(625, 468, 240, 150);
+            ArrayList<ArucoTag> tags_on_src = find_aruco_tags_at_point_AB(image, ARUCO_DICT5X5, ar_roi, "PointA");
+            for (ArucoTag t : tags_on_src) {
+                logger.info(t.toString());
+            }
+            logger.info("undistor");
+            ArrayList<ArucoTag>  tags_on_src_undistor = undistort_tags(tags_on_src);
+            for (ArucoTag t : tags_on_src_undistor) {
+                logger.info(t.toString());
+            }
+            Rect inner_roi = _find_inner_roi_at_pointB_4tags( tags_on_src);
+            logger.info( "inner_roi"  + inner_roi );
+            Mat inner_img = new Mat(image,inner_roi);
+            api.saveMatImage(inner_img, "pointa_inner.png");
+
+
+
+            //logger.info("DevLog_status " +  "RPY = " + quaternion.toString());
+
+            // irradiate the laser
+            api.laserControl(true);
+            //readQR();
+            api.saveBitmapImage(api.getBitmapNavCam(), "pointa.png");
+
+            // take target1 snapshots
+            api.takeTarget1Snapshot();
+
+            // turn the laser off
+            api.laserControl(false);
+
+            /* ******************************************** */
+            /* write your own code and repair the air leak! */
+            /* ******************************************** */
+
+            Point point2 = new Point(11.4f, -9.8f, 4.5f);
+            Point point3 = new Point(11.2f, -9.8f, 5.47f);
+            QuaternionExt q2 = new QuaternionExt(0, 0, -0.707f, 0.707f);
+            QuaternionExt q3 = new QuaternionExt(0, 0, -0.707f, 0.707f);
+
+
+
+            api.moveTo(point2, q2.get_core(), true);
+            logger.info("DevLog_status " + "Move2 done.");
+            logger.info("DevLog_status " + "RPY [q2] after = " + q2.toString());
+
+            api.moveTo(point3, q3.get_core(), true);
+            logger.info("DevLog_status " + "Move3 done.");
+            logger.info("DevLog_status " + "RPY [q3] after = " + q3.toString());
+
+
+            // get a camera image
+            image = api.getMatNavCam();
+            //Rect ar_roi = new Rect(525, 368, 340, 250);
+            ar_roi = new Rect(625, 468, 240, 150);
+            tags_on_src = find_aruco_tags_at_point_AB(image, ARUCO_DICT5X5, ar_roi, "PointA");
+            for (ArucoTag t : tags_on_src) {
+                logger.info(t.toString());
+            }
+            logger.info("undistor");
+            tags_on_src_undistor = undistort_tags(tags_on_src);
+            for (ArucoTag t : tags_on_src_undistor) {
+                logger.info(t.toString());
+            }
+            inner_roi = _find_inner_roi_at_pointB_4tags( tags_on_src);
+            logger.info( "inner_roi"  + inner_roi );
+            inner_img = new Mat(image,inner_roi);
+            api.saveMatImage(inner_img, "pointb_inner.png");
+
+
+
+            api.laserControl(true);
+            api.saveBitmapImage(api.getBitmapNavCam(), "pointb.png");
+            try {
+                Thread.sleep(5000);
+                calTargetPos(2);
+            } catch (Exception e) {
+
+            }
+            // take target1 snapshots
+            api.takeTarget2Snapshot();
+
+            // move to finish position
+            Point point6 = new Point(10.5, point3.getY(), point3.getZ());
+            QuaternionExt q6 = new QuaternionExt( q3.get_core());
+            Point point7 = new Point(point6.getX(), -8.2 , point6.getZ());
+            QuaternionExt q7 = new QuaternionExt( q3.get_core());
+            Point final_pos = new Point(11.27460, -7.89178, 4.96538);
+            QuaternionExt final_pos_quat = new QuaternionExt(0, 0, -0.707f, 0.707f);
+            api.moveTo(point7, q7.get_core(), true);
+            api.moveTo(final_pos, final_pos_quat.get_core(), true);
+            api.reportMissionCompletion();
+
+        }
+        catch  (Exception e) {
+            e.printStackTrace();
+
+            // turn the laser off
+            api.laserControl(false);
+
+            // send mission completion
+            api.reportMissionCompletion();
+        }
+    }
+
+    @Override
+    protected void runPlan2(){
+        // write here your plan 2
+    }
+
+    @Override
+    protected void runPlan3(){
+        // write here your plan 3
+    }
+
+    // You can add your method
+    private void moveToWrapper(double pos_x, double pos_y, double pos_z,
+                               double qua_x, double qua_y, double qua_z,
+                               double qua_w){
+
+        final Point point = new Point(pos_x, pos_y, pos_z);
+        final Quaternion quaternion = new Quaternion((float)qua_x, (float)qua_y,
+                                                     (float)qua_z, (float)qua_w);
+
+        api.moveTo(point, quaternion, true);
+    }
+
+    private void relativeMoveToWrapper(double pos_x, double pos_y, double pos_z,
+                               double qua_x, double qua_y, double qua_z,
+                               double qua_w) {
+
+        final Point point = new Point(pos_x, pos_y, pos_z);
+        final Quaternion quaternion = new Quaternion((float) qua_x, (float) qua_y,
+                (float) qua_z, (float) qua_w);
+
+        api.relativeMoveTo(point, quaternion, true);
+    }
+
+    public void captureImage(Mat mInter, String filename) {
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+        File file = new File(path, filename);
+        Boolean bool = null;
+        filename = file.toString();
+
+        bool = Imgcodecs.imwrite(filename, mInter);
+        if (bool == true)
+            logger.info("DevLog_status " + "imwrite" +"SUCCESS writing image to external storage");
+        else
+            logger.info("DevLog_status " + "imwrite" + "Fail writing image to external storage");
+    }
+
+    private void readQR() {
+        String contents = null;
+        byte count = 0;
+
+        long start_time = SystemClock.elapsedRealtime();
+        byte[] pixels_byte = new byte[250 * 250];
+        Image barcode = new Image(250, 250, "Y800");
+
+        ImageScanner reader = new ImageScanner();
+        reader.setConfig(Symbol.NONE, Config.ENABLE, 0);
+        reader.setConfig(Symbol.QRCODE, Config.ENABLE, 1);
+
+        while (contents == null && count < 6) {
+            SystemClock.sleep(1500);
+            Mat img = new Mat(api.getMatNavCam(), new Rect(595, 420, 250, 250));
+            img.get(0, 0, pixels_byte);
+            barcode.setData(pixels_byte);
+            try {
+                int result = reader.scanImage(barcode);
+                if (result != 0) {
+                    SymbolSet syms = reader.getResults();
+                    for (Symbol sym : syms) {
+                        contents = sym.getData();
+                    }
+                }
+                logger.info("DevLog_status_QR[raw data]:"+ contents);
+                //api.sendDiscoveredQR(contents);
+            } catch (Exception e) {
+                logger.info("DevLog_status_QR[status]:"+ " Not detected"+ e);
+            }
+            count++;
+        }
+        while (contents == null && count < 8) {
+            SystemClock.sleep(1500);
+            Mat img = new Mat(api.getMatNavCam(), new Rect(250, 300, 900, 500));
+            pixels_byte = new byte[900 * 500];
+            barcode = new Image(900, 500, "Y800");
+            img.get(0, 0, pixels_byte);
+            barcode.setData(pixels_byte);
+            try {
+                int result = reader.scanImage(barcode);
+                if (result != 0) {
+                    SymbolSet syms = reader.getResults();
+                    for (Symbol sym : syms) {
+                        contents = sym.getData();
+                    }
+                }
+                logger.info("DevLog_status_QR[raw data]:"+ contents);
+                //api.sendDiscoveredQR(contents);
+            } catch (Exception e) {
+                logger.info("DevLog_status_QR[status]:"+ " Not detected"+ e);
+            }
+            count++;
+        }
+        long stop_time = SystemClock.elapsedRealtime();
+
+        logger.info("QR[count]:" + " " + count);
+        logger.info("QR[total_time]:" + " " + (stop_time - start_time));
+    }
+
+    private double[] calTargetPos(int ii) {
+        long start_time = SystemClock.elapsedRealtime();
+        double[][] cameraParam = api.getNavCamIntrinsics();
+        Mat cameraMatrix = new Mat(3, 3, CvType.CV_32FC1);
+        Mat dstMatrix = new Mat(1, 5, CvType.CV_32FC1);
+        cameraMatrix.put(0, 0, cameraParam[0]);
+        dstMatrix.put(0, 0, cameraParam[1]);
+
+        Mat ids = new Mat();
+        Dictionary dictionary = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);
+        ArrayList<Mat> corners = new ArrayList<>();
+        double xdiff = 0, ydiff = 0;
+
+        logger.info("AR[status]:" + "start");
+        byte ar_count = 0;
+        Rect ar_roi = new Rect(525, 368, 340, 250);
+        Mat img_nav = api.getMatNavCam();
+        Mat source = new Mat(img_nav, ar_roi);
+        logger.info("AR[ar_roi]:" + "save");
+        api.saveMatImage(source, "ar_aoi"+ii+".png");
+        while (ids.size().height != 4 && ar_count < 3) {
+            try {
+                Aruco.detectMarkers(source, dictionary, corners, ids);
+                logger.info("AR[corners]: "+ corners );
+                for (Mat c : corners) {
+                    logger.info("AR[ci] -> : "+ c.dump() );
+                }
+                logger.info("AR[ids] -> : "+ ids );
+                logger.info("AR[ids] -> : "+ ids.dump() );
+                Mat res_aruco = source.clone();
+                Aruco.drawDetectedMarkers(res_aruco,corners,ids);
+                api.saveMatImage(res_aruco, "res_aruco_" +ii   + ".png");
+                logger.info("AR[res_aruco]:" + "save");
+                for (int i = 0; i < corners.size(); i++) {
+                    //Get shifted aruco tag corners
+                    Mat corrected_corner = corners.get(i);
+                    //api.saveMatImage(corrected_corner, "corrected_corner_" + ar_count + "_i"+i + ".png");
+                    logger.info("AR[corrected_corner]"+i+" before put:" + corrected_corner.dump());
+                    logger.info("AR[corrected_corner]"+i+" type:" + CvType.typeToString( corrected_corner.type()) + "w=" +corrected_corner.width()+" h="+ corrected_corner.height());
+                    //Shift it by the position that it get cropped.
+                    corrected_corner.put(0, 0, corrected_corner.get(0, 0)[0] + ar_roi.x, corrected_corner.get(0, 0)[1] + ar_roi.y);
+                    corrected_corner.put(0, 1, corrected_corner.get(0, 1)[0] + ar_roi.x, corrected_corner.get(0, 1)[1] + ar_roi.y);
+                    corrected_corner.put(0, 2, corrected_corner.get(0, 2)[0] + ar_roi.x, corrected_corner.get(0, 2)[1] + ar_roi.y);
+                    corrected_corner.put(0, 3, corrected_corner.get(0, 3)[0] + ar_roi.x, corrected_corner.get(0, 3)[1] + ar_roi.y);
+                    logger.info("AR[corrected_corner]"+i+" after put:" + corrected_corner.dump());
+                    //tmp mat to store undistorted corners.
+                    Mat tmp = new Mat(1, 4, CvType.CV_32FC2);
+
+                    //undistort the corners.
+                    Imgproc.undistortPoints(corners.get(i), tmp, cameraMatrix, dstMatrix, new Mat(), cameraMatrix);
+                    //api.saveMatImage(tmp, "tmp_"+i + ".png");
+                    logger.info("AR[tmp]"+i+ ":" + tmp.dump());
+                    //put it back in to the same array list.
+                    corners.set(i, tmp);
+                    //api.saveMatImage(corners.get(i), "corners_"+i + ".png");
+                    //logger.info("AR[corners_"+i+"]:" + "save");
+
+                }
+                Aruco.drawDetectedMarkers(res_aruco,corners,ids);
+                api.saveMatImage(res_aruco, "res_aruco2_"+ ii  + ".png");
+                logger.info("AR[res_aruco2_]:" + "save");
+                Aruco.drawDetectedMarkers(img_nav,corners,ids);
+                api.saveMatImage(img_nav, "img_nav_res_aruco_"+ ii  + ".png");
+                logger.info("AR[img_nav_res_aruco_]:" + "save");
+                for (Mat c : corners) {
+                    logger.info("AR[c2i] -> : "+ c.dump() );
+                }
+                logger.info("AR[ar_count]: "+ ar_count );
+            } catch (Exception e) {
+                logger.info("AR[status]:"+ "error"+ e);
+            }
+            ar_count++;
+        }
+        logger.info("AR[corners]: "+ corners );
+
+        if (ids.size().height == 4) {
+            float markerSize = 0.05f;
+            double avg_ar_size = 0;
+            double tx_undistort = 0, ty_undistort = 0;
+            for (Mat corner : corners) {
+                double _x = 0;
+                double _y = 0;
+                for (int j = 0; j < corner.size().width; j++) {
+                    _x = _x + corner.get(0, j)[0];
+                    _y = _y + corner.get(0, j)[1];
+                }
+                avg_ar_size += Math.abs(corner.get(0, 0)[0] - corner.get(0, 1)[0]);
+                avg_ar_size += Math.abs(corner.get(0, 2)[0] - corner.get(0, 3)[0]);
+                avg_ar_size += Math.abs(corner.get(0, 0)[1] - corner.get(0, 3)[1]);
+                avg_ar_size += Math.abs(corner.get(0, 1)[1] - corner.get(0, 2)[1]);
+                tx_undistort += _x / 4.0;
+                ty_undistort += _y / 4.0;
+            }
+            tx_undistort /= 4;
+            ty_undistort /= 4;
+            avg_ar_size /= 16;
+            double pixelPerM = avg_ar_size / markerSize;
+            logger.info("AR[pixelperM]"+ "" + pixelPerM);
+            //find diff from the center of the image
+            xdiff = (tx_undistort - 640) / pixelPerM;
+            ydiff = (480 - ty_undistort) / pixelPerM;
+        }
+        long stop_time = SystemClock.elapsedRealtime();
+        logger.info("AR[count]"+ "" + ar_count);
+        logger.info("AR[total_time]:"+ " " + (stop_time - start_time));
+        logger.info("AR[target_pos]"+ xdiff + ", " + ydiff);
+        return new double[]{xdiff, ydiff};
+    }
+
+//
+//    private String type2str(int type) {
+//        String r;
+//
+//        int depth = type & CvType.CV_MAT_DEPTH_MASK;
+//        int chans = 1 + (type >> CV_CN_SHIFT);
+//
+//        switch ( depth ) {
+//            case CvType.CV_8U:  r = "8U"; break;
+//            case CvType.CV_8S:  r = "8S"; break;
+//            case CvType.CV_16U: r = "16U"; break;
+//            case CvType.CV_16S: r = "16S"; break;
+//            case CvType.CV_32S: r = "32S"; break;
+//            case CvType.CV_32F: r = "32F"; break;
+//            case CvType.CV_64F: r = "64F"; break;
+//            default:     r = "User"; break;
+//        }
+//
+//        r += "C";
+//        r += (chans+'0');
+//
+//        return r;
+//    }
+
+
+    private  ArrayList<ArucoTag> _find_aruco_tags(Mat img , Dictionary dictionary, boolean sort_id, String savefile_name ){
+        ArrayList<ArucoTag> tags = new ArrayList<>();
+        ArrayList<Mat> corners = new ArrayList<>();
+        Mat ids = new Mat();
+        Aruco.detectMarkers(img.clone(), dictionary, corners, ids);
+        if (savefile_name.length() > 0  ){
+            logger.info("--> before draw Maker [corners] =" + corners);
+            Mat res_marker_img = img.clone();
+            Aruco.drawDetectedMarkers(res_marker_img,corners,ids);
+            api.saveMatImage(res_marker_img, savefile_name );
+            logger.info("--> after draw Maker [corners] =" + corners);
+        }
+        for( Mat c : corners){
+            logger.info("before sort :corners =" + c.dump());
+        }
+
+        logger.info("ids width =" + ids.width() + ", height" + ids.height());
+
+        for ( int i=0; i<ids.height(); i++ ){
+            tags.add( new ArucoTag(
+                       (int)ids.get(i,0)[0],
+                       corners.get(i))
+            );
+        }
+        if (sort_id){
+            Collections.sort(tags);
+        }
+
+        for( ArucoTag t : tags){
+            logger.info("after sort : tags =" + t);
+        }
+        return tags;
+    }
+
+    private  ArrayList<ArucoTag>  find_aruco_tags_at_point_AB(Mat src_img, Dictionary dict, Rect _roi, String point_name ){
+        /*
+         * Try 3 Time with expanding roi
+         */
+        int MAX_FINDING_ATTEMP = 6;
+        int CNT_TAG_INSPECT= 4;
+        int EXTEND = 40;
+        int roi_x = _roi.x;
+        int roi_y = _roi.y;
+        int w = _roi.width , h = _roi.height;
+        Rect roi = _roi;
+        ArrayList<ArucoTag> tags = new ArrayList<>();
+        for( int attemp =0; attemp<MAX_FINDING_ATTEMP;  attemp++){
+            logger.info("attemp: "+ attemp +", tags.size() =" +  tags.size() );
+            Mat roi_img = new Mat(src_img, roi );
+            tags = _find_aruco_tags(roi_img, dict, true, point_name + "_find_attemp"+ attemp +".png");
+            if (tags.size() == CNT_TAG_INSPECT) {
+                for (int k=0; k<CNT_TAG_INSPECT; k++){
+                    ArucoTag t = tags.get(k);
+                    // convert to point on  src_img
+                    t.corner.top_left_point.x += roi_x;
+                    t.corner.top_left_point.y += roi_y;
+                    t.corner.top_right_point.x += roi_x;
+                    t.corner.top_right_point.y += roi_y;
+                    t.corner.bottom_right_point.x += roi_x;
+                    t.corner.bottom_right_point.y += roi_y;
+                    t.corner.bottom_left_point.x += roi_x;
+                    t.corner.bottom_left_point.y += roi_y;
+                    tags.set(k, t);
+                }
+                break;
+            }
+            roi_x -= EXTEND;
+            roi_y -= EXTEND;
+            roi_x = (roi_x<0)?0:roi_x;
+            roi_y = (roi_y<0)?0:roi_y;
+            w += EXTEND+EXTEND;
+            h += EXTEND+EXTEND;
+            w = (w>src_img.width())? src_img.width():w;
+            h = (h>src_img.height())? src_img.height():h;
+            roi = new Rect(roi_x, roi_y, w, h );
+        }
+        return tags;
+    }
+
+    private ArrayList<ArucoTag>  undistort_tags( ArrayList<ArucoTag> tags ){
+        //undistort the corners.
+        double[][] cameraParam = api.getNavCamIntrinsics();
+        Mat cameraMatrix = new Mat(3, 3, CvType.CV_32FC1);
+        Mat dstMatrix = new Mat(1, 5, CvType.CV_32FC1);
+        cameraMatrix.put(0, 0, cameraParam[0]);
+        dstMatrix.put(0, 0, cameraParam[1]);
+        for (int i=0; i<tags.size(); i++){
+            ArucoTag t = tags.get(i);
+            Mat tmp = new Mat(1, 4, CvType.CV_32FC2);
+            Imgproc.undistortPoints(t.getMatCorner(), tmp, cameraMatrix, dstMatrix, new Mat(), cameraMatrix);
+            tags.set(i, new ArucoTag( t.id, tmp));
+        }
+        return tags;
+    }
+
+
+    private static Rect _find_inner_roi_at_pointB_4tags( ArrayList<ArucoTag> tags){
+
+        /*  Aruco Board
+            12:1    11:0
+            13:2    14:3
+
+            corner
+                 0,0          0,1             0,2             0,3
+            [ top-left:p1  top-right:p2  bottom-right:p3  bottom-left:p4 ]
+
+        /*  top-right-corner    of id 12 --- top-left-corner of 11
+                                    |
+                                    |
+            bottom-right-corner of id 13
+        */
+        int CORNER_TOP_LEFT_X = 0, CORNER_TOP_LEFT_Y;
+
+        Rect roi ;
+        int roi_x, roi_y, w , h;
+        ArucoTag id11 = tags.get(0);
+        ArucoTag id12 = tags.get(1);
+        ArucoTag id13 = tags.get(2);
+        ArucoTag id14 = tags.get(3);
+        roi_x = id12.corner.top_right_point.x.intValue();
+        roi_y = id12.corner.top_right_point.y.intValue();
+        w = (int)(id11.corner.top_left_point.x - id12.corner.top_right_point.x);
+        h = (int)(id13.corner.bottom_right_point.y - id12.corner.top_right_point.y);
+        return new Rect(roi_x, roi_y, w, h);
+    }
+
+}
+

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        is-multidex="true"
+        jar="C:\Users\Elyes\.android\build-cache\1284a9af69f537253baf3df00c0a2eeb3d977a55\output\jars\libs\ff_msgs-0.0.0.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.2"
+        sha1="51d67762d9e1fd4a5e9c715bbfbced78658dddb6">
+        <dex dex="D:\TUNSA\Kibo-RPC\Resources\SampleApk\app\build\intermediates\transforms\dex\debug\folders\1000\10\ff_msgs-0.0.0_5d516d4a599944dc77393c843aae9b43cef039bc\classes.dex" />
+    </item>
+    <item
+        is-multidex="true"
+        jar="C:\Users\Elyes\.android\build-cache\1284a9af69f537253baf3df00c0a2eeb3d977a55\output\jars\classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.2"
+        sha1="462aedc63a6b9b495755f63b41bf824307f456eb">
+        <dex dex="D:\TUNSA\Kibo-RPC\Resources\SampleApk\app\build\intermediates\transforms\dex\debug\folders\1000\10\classes_0e9dc81dbe007d38ee35b6bac4abf359678c19b1\classes.dex" />
+    </item>
+    <item
+        is-multidex="true"
+        jar="C:\Users\Elyes\.android\build-cache\1284a9af69f537253baf3df00c0a2eeb3d977a55\output\jars\libs\api-1.0-SNAPSHOT.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.2"
+        sha1="763f192f0fd59e410a9c28b9a2e7c7a986ad83fd">
+        <dex dex="D:\TUNSA\Kibo-RPC\Resources\SampleApk\app\build\intermediates\transforms\dex\debug\folders\1000\10\api-1.0-SNAPSHOT_2173b0515d22ba6f18bad021e2dd8b4427d5138d\classes.dex" />
+    </item>
+    <item
+        is-multidex="true"
+        jar="C:\Users\Elyes\.android\build-cache\c3ec96f6e74f708c87006beb84af26d6b68b39f8\output\jars\classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.2"
+        sha1="1da33e32ab8494d557dfb2f3c3f8e29fdc5d98b7">
+        <dex dex="D:\TUNSA\Kibo-RPC\Resources\SampleApk\app\build\intermediates\transforms\dex\debug\folders\1000\10\classes_218f546a39edf564d09c5c9ad111b964aec3bc91\classes.dex" />
+    </item>
+    <item
+        is-multidex="true"
+        jar="C:\Users\Elyes\.android\build-cache\1284a9af69f537253baf3df00c0a2eeb3d977a55\output\jars\libs\ros-1.0-SNAPSHOT.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.2"
+        sha1="a572c1afbdb69a1fa3f641c662eade8ed245bc2c">
+        <dex dex="D:\TUNSA\Kibo-RPC\Resources\SampleApk\app\build\intermediates\transforms\dex\debug\folders\1000\10\ros-1.0-SNAPSHOT_13cb341003f964eeb50e61fb5aa9a4a8b4873419\classes.dex" />
+    </item>
+
+</items>

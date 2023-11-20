@@ -1,0 +1,576 @@
+package jp.jaxa.iss.kibo.rpc.sampleapk;
+
+import android.os.SystemClock;
+import android.util.Log;
+
+import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+
+import org.opencv.aruco.Aruco;
+import org.opencv.aruco.Board;
+import org.opencv.aruco.DetectorParameters;
+import org.opencv.aruco.Dictionary;
+import org.opencv.core.Point;
+
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.calib3d.Calib3d;
+
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point3;
+
+import org.opencv.imgproc.Imgproc;
+import org.opencv.imgproc.Moments;
+
+import gov.nasa.arc.astrobee.Result;
+
+import gov.nasa.arc.astrobee.types.Quaternion;
+
+
+/**
+ * Class meant to handle commands from the Ground Data System and execute them in Astrobee
+ */
+
+
+public class YourService extends KiboRpcService {
+    Result result;
+    final int LOOP_MAX = 5;
+    int loopCounter = 0;
+    @Override
+    protected void runPlan1() {
+        // the mission starts
+        api.startMission();
+        Log.i("startMission_status", "startMission succeeded" );
+
+        //starting point
+        //result = moveToWrapper(10.76150f, -6.88490f, 5.31647f, 0f, 0f, -0.707f, 0.707f);
+
+        /*while (!result.hasSucceeded() && loopCounter < LOOP_MAX) {
+            result = moveToWrapper(10.76150f, -6.88490f, 5.31647f, 0f, 0f, -0.707f, 0.707f);
+            ++loopCounter;
+        }*/
+
+        //Log.i("StartingPoint_status", "moved to starting position" );
+        //
+////////////////////////////////////////////////////////TARGET1//////////////////////////////////////////////////////////////
+        //moveTo point1
+        result = moveToWrapper(10.71000f, -7.70000f, 4.48000f, 0f, 0.707f, 0f, 0.707f);
+
+        // report point1 arrival
+        api.reportPoint1Arrival();
+        Log.i("Target1_status", "moved to point 1 and reported point 1 arrival" );
+        api.saveMatImage(api.getMatNavCam(), "target1 at point1.jpeg");
+
+        result = moveToWrapper(10.71000f, -7.75000f, 4.48000f, 0f, 0.707f, 0f, 0.707f);
+        Log.i("Target1_status", "moved to target1 laser shooting point" );
+
+        // irradiate the laser
+        api.laserControl(true);
+        api.saveMatImage(api.getMatNavCam(), "target1 laser shot.jpeg");
+
+        // take target1 snapshots
+        api.takeTarget1Snapshot();
+
+        // turn the laser off
+        api.laserControl(false);
+
+        Log.i("Target1_status", "Target1 was shot, Start moving to point 2");
+
+////////////////////////////////////////////////////////TARGET2//////////////////////////////////////////////////////////////
+
+        //avoid KOZ (to be determined)
+        result = moveToWrapper (11.14890094f,-9.60f,4.60f,  0f, 0f, -0.707f, 0.707f);
+        Log.i("Target2_status", "Moved to middle point to avoid KOZ");
+
+        //move to point2
+        //result = moveToWrapper(11.27460f, -9.92284f, 5.29881f, 0f, 0f, -0.707f, 0.707f);
+        //Log.i("Target2_status", "Moved to point 2");
+        //api.saveMatImage(api.getMatNavCam(), "target2 at point2.jpeg");
+
+        result = moveToWrapper(11.14890094f, -10.08f, 5.662688031f, 0f, 0f, -0.707f, 0.707f);
+
+        try {
+            Thread.sleep(20000);
+        } catch (Exception e) {}
+
+        Log.i("Target2_status", "Moved to target2 laser shooting position");
+        Mat image2 = api.getMatNavCam();
+        api.saveMatImage(image2, "target2 at laser shooting position.jpeg");
+
+        Mat rvec = new Mat();
+        Mat tvec = new Mat();
+
+        //testFunction();
+        detectArucoMarkers(image2, rvec, tvec);
+        //findTarget2Center();
+        //Point3 target2 = find_target_cam(rvec, tvec);
+
+        //=> found the target's coordinates in the camera frame
+        //=> how to align the laser pointer in order to shoot the target perfectly in the center?
+
+        //alignLaser(target2);
+
+        // take target2 snapshots
+        for(int snapCounter=1 ; snapCounter<=10 ; snapCounter++) {
+            // irradiate the laser
+            api.laserControl(true);
+
+            Log.i("Target2_status", "Laser shot N°" + snapCounter + "succeeded, continue");
+            image2 = api.getMatNavCam();
+            api.saveMatImage(image2, "target2 ("+snapCounter+").jpeg");
+
+            // take target2 snapshot
+            api.takeTarget2Snapshot();
+
+            // turn the laser off
+            api.laserControl(false);
+
+            //realignLaser(image2);
+        }
+        Log.i("Target2_status", "All snapshots taken, moving to goal position");
+
+////////////////////////////////////////////////////////GOAL//////////////////////////////////////////////////////////////
+
+        //avoid KOZ
+        result = moveToWrapper (10.71000f, -9.8111000f, 5.4615f,  0f, 0f, -0.707f, 0.707f);
+
+        Log.i("Goal_status", "Moved to middle point to avoid KOZ");
+
+        //moving to goal position
+        result = moveToWrapper(11.27460f, -7.89178f, 4.96538f, 0f, 0f, -0.707f, 0.707f);
+
+        Log.i("Goal_status", "Moved to goal");
+
+        // send mission completion
+        api.reportMissionCompletion();
+        Log.i("MissionCompletion_status", "Announced mission completion");
+
+    }
+    public double[] getCenter(List<Point> points) {
+        final MatOfPoint points_ = new MatOfPoint();
+        points_.fromList(points);
+        return getCenter(points_);
+    }
+
+    public double[] getCenter(MatOfPoint points) {
+
+        Moments moments = Imgproc.moments(points);
+        return (new double[]{moments.get_m10() / moments.get_m00(), moments.get_m01() / moments.get_m00()});
+    }
+
+    @Override
+    protected void runPlan2() {
+        // write here your plan 2
+    }
+
+    @Override
+    protected void runPlan3() {
+        // write here your plan 3
+    }
+
+    public void detectArucoMarkers(Mat image, Mat rvec, Mat tvec){
+        double[][] camera_param = api.getNavCamIntrinsics();
+
+        Mat cameraMatrix = new Mat(3, 3, CvType.CV_64FC1);
+        cameraMatrix.put(0, 0, camera_param[0]);
+
+        Mat distCoeffs = new Mat(1, 5, CvType.CV_64FC1);
+        distCoeffs.put(0, 0, camera_param[1]);
+
+        Dictionary dictionary = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);
+        List<Mat> markerCorners = new ArrayList<>();
+        Mat markerIds = new Mat();
+        DetectorParameters parameters = DetectorParameters.create();
+
+        //detect markers from image
+        Aruco.detectMarkers(image, dictionary, markerCorners, markerIds, parameters);
+
+        //draw detected markers in the image
+        Mat outputImage = image.clone();
+
+        Aruco.drawDetectedMarkers(outputImage, markerCorners, markerIds);
+        api.saveMatImage(outputImage, "target2 drawdetectedmarkers function test.jpeg");
+        Log.i("ARUCO test", "target2 drawdetectedmarkers function test");
+        Aruco.estimatePoseSingleMarkers(markerCorners, 0.05f,  cameraMatrix, distCoeffs, rvec, tvec);
+
+        int id12=0;
+        for (int i = 0; i < markerIds.rows(); i++) {
+            Log.i("markerIDs", "markerIds.get("+ i + ", 0)[0]= " + markerIds.get(i, 0)[0]);
+            if (markerIds.get(i,0)[0]==12)
+                id12=i;
+        }
+        List<Point> centerPoints = new ArrayList<>();
+        for (Mat mat : markerCorners) {
+            Log.i("ARUCO test ", "mat.dump() = " + mat.dump());
+            List<Point> markerCornerPoints = new ArrayList<>();
+            for (int row = 0; row < mat.height(); row++) {
+                for (int col = 0; col < mat.width(); col++) {
+                    final Point point = new Point(mat.get(row, col));
+                    markerCornerPoints.add(point);
+                    Imgproc.circle(image, point, 2, new Scalar(100, 100, 0), -1);
+                }
+            }
+            final Point centerSingleMarker = new Point(getCenter(markerCornerPoints));
+            centerPoints.add(centerSingleMarker);
+            Imgproc.circle(image, centerSingleMarker, 2, new Scalar(255, 0, 0), -1);
+        }
+        final Point centerOfAllMarkers = new Point(getCenter(centerPoints));
+        Imgproc.circle(image, centerOfAllMarkers, 2, new Scalar(0, 128, 0), -1);
+        api.saveMatImage(image, "target2 draw detected markers with circles test.jpeg");
+        Log.i("ARUCO test", "target2 draw detected markers with circles test");
+        Log.i("ARUCO test", "Center of markers in marker frame:  ("+ centerOfAllMarkers.x +", "+centerOfAllMarkers.y+ ") ");
+
+        Point3 center_cam_frame = find_target_center_cam_frame(centerOfAllMarkers, rvec, tvec, id12);
+        Log.i("ARUCO test", "Center of markers in camera frame: ("+ center_cam_frame.x +", "+center_cam_frame.y+ ", " + center_cam_frame.z + ")");
+
+        Aruco.drawAxis( outputImage , cameraMatrix, distCoeffs, rvec, tvec, 0.05f );
+        api.saveMatImage(outputImage, "target2 drawAxis test.jpeg");
+        Log.i("ARUCO test", "target2 drawAxis test");
+
+/////////////////////////////////////////////////VERIFIED////////////////////////////////////////////////////////////////
+//estimate each marker's pose
+
+        /*//à discuter
+        Board board = Board.create(markerCorners, dictionary, markerIds);
+    ;*/
+
+       for (int i = 0 ; i < tvec.rows() ; i++ ) {
+                for (int j = 0; j < tvec.cols(); j++) {
+                    Log.i("tvec[0]", "tvec.get(" + i + ", "+ j + ")[0]= " + tvec.get(i, j)[0]);
+                }
+            }
+        for (int i = 0 ; i < tvec.rows() ; i++ ) {
+            for (int j = 0; j < tvec.cols(); j++) {
+                Log.i("tvec[1]", "tvec.get(" + i + ", "+ j + ")[1]= " + tvec.get(i, j)[1]);
+            }
+        }
+        for (int i = 0 ; i < tvec.rows() ; i++ ) {
+            for (int j = 0; j < tvec.cols(); j++) {
+                Log.i("tvec[2]", "tvec.get(" + i + ", "+ j + ")[2]= " + tvec.get(i, j)[2]);
+            }
+        }
+        for (int i = 0 ; i < tvec.rows() ; i++ ) {
+            for (int j = 0; j < tvec.cols(); j++) {
+                Log.i("tvec[3]", "tvec.get(" + i + ", "+ j + ")[3]= " + tvec.get(i, j)[3]);
+            }
+        }
+
+        for (int i = 0 ; i < rvec.rows() ; i++ ) {
+            for (int j = 0; j < rvec.cols(); j++) {
+                Log.i("rvec[0]", "rvec.get(" + i + ", "+ j + ")[0]= " + rvec.get(i, j)[0]);
+            }
+        }
+        for (int i = 0 ; i < rvec.rows() ; i++ ) {
+            for (int j = 0; j < rvec.cols(); j++) {
+                Log.i("rvec[1]", "rvec.get(" + i + ", "+ j + ")[0]= " + rvec.get(i, j)[1]);
+            }
+        }
+        for (int i = 0 ; i < rvec.rows() ; i++ ) {
+            for (int j = 0; j < rvec.cols(); j++) {
+                Log.i("rvec[2]", "rvec.get(" + i + ", "+ j + ")[0]= " + rvec.get(i, j)[2]);
+            }
+        }
+        for (int i = 0 ; i < rvec.rows() ; i++ ) {
+            for (int j = 0; j < rvec.cols(); j++) {
+                Log.i("rvec[3]", "rvec.get(" + i + ", "+ j + ")[0]= " + rvec.get(i, j)[3]);
+            }
+        }
+
+
+    }
+
+    public Point3 find_target_center_cam_frame(Point center, Mat rvec, Mat tvec, int id) {
+
+        Mat rot_mat = new Mat();
+        Calib3d.Rodrigues(rvec.row(id), rot_mat);
+        Mat rmat = rot_mat.t();
+        double[][] rarray = {
+                new double[]{rmat.get(0, 0)[0], rmat.get(0, 1)[0], rmat.get(0, 2)[0]},
+                new double[]{rmat.get(1, 0)[0], rmat.get(1, 1)[0], rmat.get(1, 2)[0]},
+                new double[]{rmat.get(2, 0)[0], rmat.get(2, 1)[0], rmat.get(2, 2)[0]}
+        };
+
+        double[][] offset = {
+                new double[]{center.x},
+                new double[]{center.y},
+                new double[]{0.0D}};
+
+        double[][] global_offset = multiplyMat(rarray, offset);
+
+        return( new Point3(
+                global_offset[0][0] +  tvec.get(0, 0)[0],
+                global_offset[1][0] +  tvec.get(1, 0)[0],
+                global_offset[2][0] +  tvec.get(2, 0)[0]));
+    }
+
+    public void alignLaser(Point3 target){
+        double[] robot_pos = new double[]{10.71000D, -7.70000D, 4.48000D};
+        Point3 laser = new Point3 (0.1302D, 0.0572D, -0.1111D);
+        //Point3 Rcenter = new Point3 (0D,0D,0D);
+        double r1 = 0.1711585522;
+        double pivot_laser_target_angle = 139.525787D;
+
+        // law of cosines: c2=a2+b2﹣2abcosγ
+        // γ = pivot_laser_target_angle
+        // a = R2 (unknown)
+        // b = R1
+        // c= pivot_to_target_length
+        double[] current_orientation = {-90, 0, 0};
+        double[] target_point = new double[2];
+        target_point[0] = 0.785;
+//        target_point[1] = target_pos[1] + 0.0826;
+        target_point[1] = target.y + 0.0926;
+        Log.i("AR[target_point(xy plane)]", target_point[0] + ", " + target_point[1]);
+
+        // square root(delta x square + delta y square)
+        double pivot_to_target_length = Math.sqrt(Math.pow(target_point[0], 2) + Math.pow(target_point[1], 2));
+        Log.i("AR[pivot_to_target_length]", "" + pivot_to_target_length);
+
+        double a = 1;
+        double b = 2 * r1 * Math.cos(Math.toRadians(180 - pivot_laser_target_angle));
+        double c = Math.pow(r1, 2) - Math.pow(pivot_to_target_length, 2);
+        double r2 = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / 2 * a;
+
+        Log.i("AR[radius]", r1 + ", " + r2);
+
+        double[] laser_shooting_coord = find_laser_point(target_point, r1, r2);
+        double laser_origin_to_shooting_length = Math.sqrt(Math.pow(laser.x - laser_shooting_coord[0], 2) + Math.pow(laser.y - laser_shooting_coord[1], 2));
+
+        Log.i("AR[laser_shooting_coord]", laser_shooting_coord[0] + ", " + laser_shooting_coord[1]);
+        Log.i("AR[laser_origin_to_shooting_length]", "" + laser_origin_to_shooting_length);
+
+        double pitch = 2 * Math.toDegrees(Math.asin((0.5 * laser_origin_to_shooting_length) / r1));
+        Log.i("AR[pitch]", "" + pitch);
+        if (target_point[1] != 0 && pitch < 45) {
+            current_orientation[1] = current_orientation[1] - pitch;
+        } else {
+            //Just to be safe
+            current_orientation[1] = current_orientation[1] - 30;
+        }
+
+//        robot_pos[0] = robot_pos[0] + (target_pos[0] - 0.0994);
+//        robot_pos[0] = robot_pos[0] + (target_pos[0] - 0.092);
+        robot_pos[0] = robot_pos[0] + (target.x - 0.1094);
+        Log.i("AR[Robot Position]", robot_pos[0] + ", " + current_orientation[1]);
+        Quaternion q = eulerToQuaternion( current_orientation[0], current_orientation[1], current_orientation[2]);
+        result = moveToWrapper(robot_pos[0],robot_pos[1],robot_pos[2], q.getX(), q.getY(), q.getZ(), q.getW());
+    }
+
+    double[][] multiplyMat(double[][] firstMatrix, double[][] secondMatrix) {
+        double[][] result = new double[firstMatrix.length][secondMatrix[0].length];
+
+        for (int row = 0; row < result.length; row++) {
+            for (int col = 0; col < result[row].length; col++) {
+                for (int i = 0; i < secondMatrix.length; i++) {
+                    result[row][col] += firstMatrix[row][i] * secondMatrix[i][col];
+                }
+            }
+        }
+        return result;
+    }
+    double length (Point3 p1, Point3 p2){
+        return Math.sqrt(Math.pow(p1.x-p2.x,2)+Math.pow(p1.y-p2.y,2)+Math.pow(p1.z-p2.z,2));
+    }
+
+    private double[] find_laser_point(double[] target_point, double r1, double r2) {
+        double x1 = 0, y1 = 0, x2 = target_point[0], y2 = target_point[1];
+        double centerdx = x1 - x2;
+        double centerdy = y1 - y2;
+        double R = Math.sqrt(centerdx * centerdx + centerdy * centerdy);
+        double R2 = R * R;
+        double R4 = R2 * R2;
+        double a = (r1 * r1 - r2 * r2) / (2 * R2);
+        double r2r2 = (r1 * r1 - r2 * r2);
+        double c = Math.sqrt(2 * (r1 * r1 + r2 * r2) / R2 - (r2r2 * r2r2) / R4 - 1);
+        double fx = (x1 + x2) / 2 + a * (x2 - x1);
+        double gx = c * (y2 - y1) / 2;
+        double ix1 = fx + gx;
+        double ix2 = fx - gx;
+        double fy = (y1 + y2) / 2 + a * (y2 - y1);
+        double gy = c * (x1 - x2) / 2;
+        double iy1 = fy + gy;
+        double iy2 = fy - gy;
+        if (iy1 > iy2) {
+            return new double[]{ix1, iy1};
+        }
+        return new double[]{ix2, iy2};
+    }
+    private Quaternion eulerToQuaternion(double yaw_degree, double pitch_degree, double roll_degree) {
+        double yaw = Math.toRadians(yaw_degree); //radian = degree*PI/180
+        double pitch = Math.toRadians(pitch_degree);
+        double roll = Math.toRadians(roll_degree);
+
+        double cy = Math.cos(yaw * 0.5);
+        double sy = Math.sin(yaw * 0.5);
+        double cp = Math.cos(pitch * 0.5);
+        double sp = Math.sin(pitch * 0.5);
+        double cr = Math.cos(roll * 0.5);
+        double sr = Math.sin(roll * 0.5);
+
+        double qx = sr * cp * cy - cr * sp * sy;
+        double qy = cr * sp * cy + sr * cp * sy;
+        double qz = cr * cp * sy - sr * sp * cy;
+        double qw = cr * cp * cy + sr * sp * sy;
+
+        return new Quaternion((float) qx, (float) qy, (float) qz, (float) qw);
+    }
+
+    private Result moveToWrapper(double pos_x, double pos_y, double pos_z,
+                                 double qua_x, double qua_y, double qua_z,
+                                 double qua_w) {
+        //final Point point = new Point(pos_x, pos_y, pos_z);
+        final gov.nasa.arc.astrobee.types.Point point = new gov.nasa.arc.astrobee.types.Point(pos_x, pos_y, pos_z);
+        final Quaternion quaternion = new Quaternion((float) qua_x, (float) qua_y,
+                (float) qua_z, (float) qua_w);
+
+        return (api.moveTo(point, quaternion, true));
+    }
+
+    private Result relativeMoveToWrapper(double pos_x, double pos_y, double pos_z,
+                                         double qua_x, double qua_y, double qua_z,
+                                         double qua_w) {
+
+        final gov.nasa.arc.astrobee.types.Point point = new gov.nasa.arc.astrobee.types.Point(pos_x, pos_y, pos_z);
+        final Quaternion quaternion = new Quaternion((float) qua_x, (float) qua_y,
+                (float) qua_z, (float) qua_w);
+
+        return (api.relativeMoveTo(point, quaternion, true));
+    }
+    public void testFunction(){
+        double[] current_orientation = {-90, 0, 0};
+        double[] laser_point = {0.1302, 0.1111};
+        double pivot_laser_target_angle = 139.525787;
+        double r1 = 0.1711585522;  //pivot_to_laser_length
+        double[] target_point = new double[2];
+
+        //TBV
+        double[] target_pos = calTargetPos();
+        target_point[0] = 0.785;
+//      target_point[1] = target_pos[1] + 0.0826;
+        target_point[1] = target_pos[1] + 0.0926;
+        //TBV
+
+        Log.d("AR[target_point(xy plane)]", target_point[0] + ", " + target_point[1]);
+        // square root(delta x square + delta y square)
+        double pivot_to_target_length = Math.sqrt(Math.pow(target_point[0], 2) + Math.pow(target_point[1], 2));
+        Log.d("AR[pivot_to_target_length]", "" + pivot_to_target_length);
+        double a = 1;
+        double b = 2 * r1 * Math.cos(Math.toRadians(180 - pivot_laser_target_angle));
+        double c = Math.pow(r1, 2) - Math.pow(pivot_to_target_length, 2);
+        double r2 = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / 2 * a;
+        Log.d("AR[radius]", r1 + ", " + r2);
+
+        double[] laser_shooting_coord = find_laser_point(target_point, r1, r2);
+        Log.d("AR[laser_shooting_coord]", laser_shooting_coord[0] + ", " + laser_shooting_coord[1]);
+
+        double laser_origin_to_shooting_length = Math.sqrt(Math.pow(laser_point[0] - laser_shooting_coord[0], 2) + Math.pow(laser_point[1] - laser_shooting_coord[1], 2));
+        Log.d("AR[laser_origin_to_shooting_length]", "" + laser_origin_to_shooting_length);
+
+        double pitch = 2 * Math.toDegrees(Math.asin((0.5 * laser_origin_to_shooting_length) / r1));
+        Log.d("AR[pitch]", "" + pitch);
+        if (target_point[1] != 0 && pitch < 45) {
+            current_orientation[1] = current_orientation[1] - pitch;
+        } else {
+            //Just to be safe
+            current_orientation[1] = current_orientation[1] - 30;
+        }
+
+        double[] robot_pos = {api.getRobotKinematics().getPosition().getX(), api.getRobotKinematics().getPosition().getY(), api.getRobotKinematics().getPosition().getZ()};
+
+        //TBV
+ //        robot_pos[0] = robot_pos[0] + (target_pos[0] - 0.0994);
+//        robot_pos[0] = robot_pos[0] + (target_pos[0] - 0.092);
+        robot_pos[0] = robot_pos[0] + (target_pos[0] - 0.1094);
+        //TBV
+
+        Log.d("AR[Robot Position]", robot_pos[0] + ", " + current_orientation[1]);
+        Quaternion q = eulerToQuaternion(current_orientation[0], current_orientation[1], current_orientation[2]);
+        result = moveToWrapper(robot_pos[0],robot_pos[1],robot_pos[2], q.getX(), q.getY(), q.getZ(), q.getW());
+   }
+
+
+    private double[] calTargetPos() {
+        long start_time = SystemClock.elapsedRealtime();
+        double[][] cameraParam = api.getNavCamIntrinsics();
+        Mat cameraMatrix = new Mat(3, 3, CvType.CV_32FC1);
+        Mat dstMatrix = new Mat(1, 5, CvType.CV_32FC1);
+        cameraMatrix.put(0, 0, cameraParam[0]);
+        dstMatrix.put(0, 0, cameraParam[1]);
+
+        Mat ids = new Mat();
+        Dictionary dictionary = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);
+        ArrayList<Mat> corners = new ArrayList<>();
+        double xdiff = 0, ydiff = 0;
+
+        Log.d("AR[status]:", "start");
+        byte ar_count = 0;
+        Rect ar_roi;
+        while (ids.size().height != 4 && ar_count < 3) {
+            try {
+                if (ar_count == 0) {
+                    ar_roi = new Rect(470, 680, 360, 280);
+                }
+                //fall back if the aruco tag is outside of cropped boundary.
+                else {
+                    ar_roi = new Rect(100, 660, 1080, 300);
+                }
+                Mat source = new Mat(api.getMatNavCam(), ar_roi);
+                Aruco.detectMarkers(source, dictionary, corners, ids);
+                for (int i = 0; i < corners.size(); i++) {
+                    //Get shifted aruco tag corners
+                    Mat corrected_corner = corners.get(i);
+                    //Shift it by the position that it get cropped.
+                    corrected_corner.put(0, 0, corrected_corner.get(0, 0)[0] + ar_roi.x, corrected_corner.get(0, 0)[1] + ar_roi.y);
+                    corrected_corner.put(0, 1, corrected_corner.get(0, 1)[0] + ar_roi.x, corrected_corner.get(0, 1)[1] + ar_roi.y);
+                    corrected_corner.put(0, 2, corrected_corner.get(0, 2)[0] + ar_roi.x, corrected_corner.get(0, 2)[1] + ar_roi.y);
+                    corrected_corner.put(0, 3, corrected_corner.get(0, 3)[0] + ar_roi.x, corrected_corner.get(0, 3)[1] + ar_roi.y);
+                    //tmp mat to store undistorted corners.
+                    Mat tmp = new Mat(1, 4, CvType.CV_32FC2);
+                    //undistort the corners.
+                    Imgproc.undistortPoints(corners.get(i), tmp, cameraMatrix, dstMatrix, new Mat(), cameraMatrix);
+                    //put it back in to the same array list.
+                    corners.set(i, tmp);
+                }
+            } catch (Exception e) {
+                Log.e("AR[status]:", "error", e);
+            }
+            ar_count++;
+        }
+        if (ids.size().height == 4) {
+            float markerSize = 0.05f;
+            double avg_ar_size = 0;
+            double tx_undistort = 0, ty_undistort = 0;
+            for (Mat corner : corners) {
+                double _x = 0;
+                double _y = 0;
+                for (int j = 0; j < corner.size().width; j++) {
+                    _x = _x + corner.get(0, j)[0];
+                    _y = _y + corner.get(0, j)[1];
+                }
+                avg_ar_size += Math.abs(corner.get(0, 0)[0] - corner.get(0, 1)[0]);
+                avg_ar_size += Math.abs(corner.get(0, 2)[0] - corner.get(0, 3)[0]);
+                avg_ar_size += Math.abs(corner.get(0, 0)[1] - corner.get(0, 3)[1]);
+                avg_ar_size += Math.abs(corner.get(0, 1)[1] - corner.get(0, 2)[1]);
+                tx_undistort += _x / 4.0;
+                ty_undistort += _y / 4.0;
+            }
+            tx_undistort /= 4;
+            ty_undistort /= 4;
+            avg_ar_size /= 16;
+            double pixelPerM = avg_ar_size / markerSize;
+            Log.d("AR[pixelperM]", "" + pixelPerM);
+            //find diff from the center of the image
+            xdiff = (tx_undistort - 640) / pixelPerM;
+            ydiff = (480 - ty_undistort) / pixelPerM;
+        }
+        long stop_time = SystemClock.elapsedRealtime();
+        Log.d("AR[count]", "" + ar_count);
+        Log.d("AR[total_time]:", " " + (stop_time - start_time));
+        Log.d("AR[target_pos]", xdiff + ", " + ydiff);
+        return new double[]{xdiff, ydiff};
+    }
+}
