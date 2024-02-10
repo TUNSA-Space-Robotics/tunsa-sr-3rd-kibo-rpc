@@ -12,7 +12,7 @@ This project was undertaken as part of the 3rd Kibo Robot Programming Challenge 
 
 The project took place from June 1, 2022, to July 25, 2022. As the lead programmer, I spearheaded a team of 5 members to address complex navigation challenges within the confines of the ISS environment. Our focus encompassed trajectory optimization, obstacle avoidance, and robust computer vision algorithms.
 
-## Key Features
+## Technical Details
 
 - **Optimized Trajectory and Obstacle Avoidance**: Enhanced navigation efficiency by optimizing Astrobee trajectory and obstacle avoidance algorithms, resulting in a 48% reduction in mission completion time.
 - **Target Localization and Laser Shooting**: Implemented robust OpenCV algorithms for locating and laser shooting circular targets in the ISS Kibo module, achieving a 33% improvement in team scores.
