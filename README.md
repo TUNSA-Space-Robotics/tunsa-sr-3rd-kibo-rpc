@@ -44,15 +44,16 @@ This project is licensed under the [GPL-3.0 License](LICENSE).
 
 ## Contacts
 
-For inquiries or collaboration opportunities, please contact:
+### Genesis x SpaceBeat team: 
 
 - Elyes Khechine: elyeskhechine@gmail.com
 - Emna Mezghani: emnamez2@gmail.com
 - Mohamed Aziz Naifar: mohamedaziz322005@gmail.com
-- Oussema Jouini: oussamajouini101@gmail.com
-- Nesrine Abidi: nesrinabidi766@gmail.com
-- Rayen Ben Ismail: rayenbenismail@gmail.com
-- Ameni Jellali: jellaliameni@gmail.com
-- Afef Salhi: salhiafefge@gmail.com
-- Fatma Zahra Trabelsi: zahrafatmafzt@gmail.com
-- Mariem Kassemtini: kassemtinimariem@gmail.com
+- Alaa Ben Ameur: alaa.benameur@gmail.com
+
+### Prime x Bondowoso 3 team:
+
+- Oussama Mahfoudhi: oussamamahfoudhi1999@gmail.com
+- Farid Adwani: farid8569@gmail.com
+- Omar Gassab: omar.gassab@insat.ucar.tn
+- Chaima Jabri: jabrichaima1@gmail.com
