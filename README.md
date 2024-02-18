@@ -6,11 +6,11 @@
 
 ## Introduction
 
-This project was undertaken as part of the 3rd Kibo Robot Programming Challenge hosted by JAXA in collaboration with NASA. It involved the navigation of a free-flying Astrobee within the International Space Station (ISS). Leveraging advanced technologies and programming methodologies, our team tackled challenges in trajectory optimization and computer vision to ensure precise navigation and operation of the Astrobee.
+This project involves the navigation of a free-flying Astrobee within the International Space Station (ISS). Each team embarked on a journey to address complex navigation challenges within the confines of the ISS environment. Their focus encompassed trajectory optimization, obstacle avoidance, and robust computer vision algorithms to ensure precise navigation and operation of the Astrobee.
 
 ## Project Scope
 
-The project took place from June 1, 2022, to July 25, 2022. As the lead programmer, I spearheaded a team of 5 members to address complex navigation challenges within the confines of the ISS environment. Our focus encompassed trajectory optimization, obstacle avoidance, and robust computer vision algorithms.
+The project took place from June 1, 2022, to July 25, 2022. It was undertaken as part of the 3rd Kibo Robot Programming Challenge hosted by JAXA in collaboration with NASA. Since the challenge at the time was not open to non-Kibo-ABC countries, the Tunisian Space Association (TUNSA) arranged an agreement with the JAXA to allow a number of teams from Tunisia to participate in collaboration with other teams from Kibo-ABC countries. Eventually, 7 Tunisian teams, 5-members each, were able to participate in the challenge, each led by a member from TUNSA Space Robotics. This repository houses the source code and APKs submitted during the competition for 2 teams: Genesis_x_Spacebeat and Prime_x_Bondowoso3. It also contains the programming resources that were used throughout the challenge.
 
 ## Technical Details
 
@@ -25,13 +25,14 @@ The project took place from June 1, 2022, to July 25, 2022. As the lead programm
 
 1. Set up the necessary development environment, including Java Development Kit (JDK) and Android Studio.
 2. Install OpenCV library and configure it with the Android Studio project.
-3. Ensure compatibility with the target platform and hardware devices.
+3. Build the project and export the APK
 
 ### Usage
 
-1. Launch the application on the designated platform within the ISS environment.
-2. Monitor real-time feedback from the Astrobee's cameras and sensors.
-3. Execute navigation tasks and observe system performance in simulated and actual environments.
+1. Upload the APK to the dedicated page on the Kibo-RPC competition website.
+2. Launch the simulation environment of the ISS provided by JAXA.
+3. Monitor real-time feedback from the Astrobee's cameras and sensors.
+4. Execute navigation tasks and observe system performance in simulated and actual environments.
 
 ## Contributing
 
